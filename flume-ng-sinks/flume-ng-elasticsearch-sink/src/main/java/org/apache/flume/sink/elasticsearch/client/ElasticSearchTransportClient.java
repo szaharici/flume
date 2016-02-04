@@ -27,6 +27,7 @@ import org.apache.flume.sink.elasticsearch.ElasticSearchEventSerializer;
 import org.apache.flume.sink.elasticsearch.IndexNameBuilder;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
@@ -180,7 +181,13 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
     try {
       BulkResponse bulkResponse = bulkRequestBuilder.execute().actionGet();
       if (bulkResponse.hasFailures()) {
-        throw new EventDeliveryException(bulkResponse.buildFailureMessage());
+        for (BulkItemResponse item : bulkResponse)
+        {
+          if (item.isFailed())
+          {
+            logger.error(item.getFailureMessage());
+          }
+        }
       }
     } finally {
       bulkRequestBuilder = client.prepareBulk();
