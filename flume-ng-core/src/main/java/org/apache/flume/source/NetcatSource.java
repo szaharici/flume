@@ -112,6 +112,8 @@ public class NetcatSource extends AbstractSource implements Configurable,
   private String hostName;
   private int port;
   private int maxLineLength;
+  private boolean ackEveryEvent;
+  private String sourceEncoding;
 
   private CounterGroup counterGroup;
   private ServerSocketChannel serverSocket;
@@ -131,14 +133,20 @@ public class NetcatSource extends AbstractSource implements Configurable,
   public void configure(Context context) {
     String hostKey = NetcatSourceConfigurationConstants.CONFIG_HOSTNAME;
     String portKey = NetcatSourceConfigurationConstants.CONFIG_PORT;
+    String ackEventKey = NetcatSourceConfigurationConstants.CONFIG_ACKEVENT;
 
     Configurables.ensureRequiredNonNull(context, hostKey, portKey);
 
     hostName = context.getString(hostKey);
     port = context.getInteger(portKey);
+    ackEveryEvent = context.getBoolean(ackEventKey, true);
     maxLineLength = context.getInteger(
         NetcatSourceConfigurationConstants.CONFIG_MAX_LINE_LENGTH,
         NetcatSourceConfigurationConstants.DEFAULT_MAX_LINE_LENGTH);
+    sourceEncoding = context.getString(
+        NetcatSourceConfigurationConstants.CONFIG_SOURCE_ENCODING,
+        NetcatSourceConfigurationConstants.DEFAULT_ENCODING
+    );
   }
 
   @Override
@@ -170,8 +178,10 @@ public class NetcatSource extends AbstractSource implements Configurable,
     acceptRunnable.counterGroup = counterGroup;
     acceptRunnable.handlerService = handlerService;
     acceptRunnable.shouldStop = acceptThreadShouldStop;
+    acceptRunnable.ackEveryEvent = ackEveryEvent;
     acceptRunnable.source = this;
     acceptRunnable.serverSocket = serverSocket;
+    acceptRunnable.sourceEncoding = sourceEncoding;
 
     acceptThread = new Thread(acceptRunnable);
 
@@ -246,6 +256,8 @@ public class NetcatSource extends AbstractSource implements Configurable,
     private ExecutorService handlerService;
     private EventDrivenSource source;
     private AtomicBoolean shouldStop;
+    private boolean ackEveryEvent;
+    private String sourceEncoding;
 
     private final int maxLineLength;
 
@@ -266,6 +278,8 @@ public class NetcatSource extends AbstractSource implements Configurable,
           request.socketChannel = socketChannel;
           request.counterGroup = counterGroup;
           request.source = source;
+          request.ackEveryEvent = ackEveryEvent;
+          request.sourceEncoding = sourceEncoding;
 
           handlerService.submit(request);
 
@@ -287,6 +301,8 @@ public class NetcatSource extends AbstractSource implements Configurable,
     private Source source;
     private CounterGroup counterGroup;
     private SocketChannel socketChannel;
+    private boolean ackEveryEvent;
+    private String sourceEncoding;
 
     private final int maxLineLength;
 
@@ -300,8 +316,8 @@ public class NetcatSource extends AbstractSource implements Configurable,
       Event event = null;
 
       try {
-        Reader reader = Channels.newReader(socketChannel, "utf-8");
-        Writer writer = Channels.newWriter(socketChannel, "utf-8");
+        Reader reader = Channels.newReader(socketChannel, sourceEncoding);
+        Writer writer = Channels.newWriter(socketChannel, sourceEncoding);
         CharBuffer buffer = CharBuffer.allocate(maxLineLength);
         buffer.flip(); // flip() so fill() sees buffer as initially empty
 
@@ -392,7 +408,9 @@ public class NetcatSource extends AbstractSource implements Configurable,
             if (ex == null) {
               counterGroup.incrementAndGet("events.processed");
               numProcessed++;
-              writer.write("OK\n");
+              if (true == ackEveryEvent) {
+                writer.write("OK\n");
+              }
             } else {
               counterGroup.incrementAndGet("events.failed");
               logger.warn("Error processing event. Exception follows.", ex);

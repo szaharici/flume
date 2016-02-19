@@ -18,6 +18,8 @@
  */
 package org.apache.flume.instrumentation;
 
+import org.apache.commons.lang.ArrayUtils;
+
 public class SourceCounter extends MonitoredCounterGroup implements
     SourceCounterMBean {
 
@@ -35,18 +37,27 @@ public class SourceCounter extends MonitoredCounterGroup implements
       "src.append-batch.received";
   private static final String COUNTER_APPEND_BATCH_ACCEPTED =
       "src.append-batch.accepted";
+  
+  private static final String COUNTER_OPEN_CONNECTION_COUNT =
+          "src.open-connection.count";
 
 
   private static final String[] ATTRIBUTES =
     {
       COUNTER_EVENTS_RECEIVED, COUNTER_EVENTS_ACCEPTED,
       COUNTER_APPEND_RECEIVED, COUNTER_APPEND_ACCEPTED,
-      COUNTER_APPEND_BATCH_RECEIVED, COUNTER_APPEND_BATCH_ACCEPTED
+      COUNTER_APPEND_BATCH_RECEIVED, COUNTER_APPEND_BATCH_ACCEPTED,
+      COUNTER_OPEN_CONNECTION_COUNT
     };
 
 
   public SourceCounter(String name) {
     super(MonitoredCounterGroup.Type.SOURCE, name, ATTRIBUTES);
+  }
+
+  public SourceCounter(String name, String[] attributes) {
+    super(Type.SOURCE, name,
+        (String[]) ArrayUtils.addAll(attributes,ATTRIBUTES));
   }
 
   @Override
@@ -109,5 +120,13 @@ public class SourceCounter extends MonitoredCounterGroup implements
 
   public long incrementAppendBatchAcceptedCount() {
     return increment(COUNTER_APPEND_BATCH_ACCEPTED);
+  }
+
+  public long getOpenConnectionCount() {
+    return get(COUNTER_OPEN_CONNECTION_COUNT);
+  }
+
+  public void setOpenConnectionCount(long openConnectionCount){
+    set(COUNTER_OPEN_CONNECTION_COUNT, openConnectionCount);
   }
 }

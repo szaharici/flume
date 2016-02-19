@@ -18,6 +18,8 @@
  */
 package org.apache.flume.instrumentation;
 
+import org.apache.commons.lang.ArrayUtils;
+
 public class ChannelCounter extends MonitoredCounterGroup implements
     ChannelCounterMBean {
 
@@ -35,14 +37,22 @@ public class ChannelCounter extends MonitoredCounterGroup implements
   private static final String COUNTER_EVENT_TAKE_SUCCESS =
       "channel.event.take.success";
 
+  private static final String COUNTER_CHANNEL_CAPACITY =
+          "channel.capacity";
+
   private static final String[] ATTRIBUTES = {
     COUNTER_CHANNEL_SIZE, COUNTER_EVENT_PUT_ATTEMPT,
     COUNTER_EVENT_TAKE_ATTEMPT, COUNTER_EVENT_PUT_SUCCESS,
-    COUNTER_EVENT_TAKE_SUCCESS
+    COUNTER_EVENT_TAKE_SUCCESS, COUNTER_CHANNEL_CAPACITY
   };
 
   public ChannelCounter(String name) {
     super(MonitoredCounterGroup.Type.CHANNEL, name, ATTRIBUTES);
+  }
+
+  public ChannelCounter(String name, String[] attributes) {
+    super(MonitoredCounterGroup.Type.CHANNEL, name,
+        (String[])ArrayUtils.addAll(attributes,ATTRIBUTES));
   }
 
   @Override
@@ -89,4 +99,23 @@ public class ChannelCounter extends MonitoredCounterGroup implements
   public long addToEventTakeSuccessCount(long delta) {
     return addAndGet(COUNTER_EVENT_TAKE_SUCCESS, delta);
   }
+
+  public void setChannelCapacity(long capacity){
+    set(COUNTER_CHANNEL_CAPACITY, capacity);
+  }
+
+  @Override
+  public long getChannelCapacity(){
+    return get(COUNTER_CHANNEL_CAPACITY);
+  }
+
+  @Override
+  public double getChannelFillPercentage(){
+    long capacity = getChannelCapacity();
+    if(capacity != 0L) {
+      return ((getChannelSize()/(double)capacity) * 100);
+    }
+    return Double.MAX_VALUE;
+  }
+
 }
