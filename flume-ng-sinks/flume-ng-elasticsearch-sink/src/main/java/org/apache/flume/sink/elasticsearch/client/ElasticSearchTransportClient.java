@@ -180,16 +180,22 @@ public class ElasticSearchTransportClient implements ElasticSearchClient {
   public void execute() throws Exception {
     try {
       BulkResponse bulkResponse = bulkRequestBuilder.execute().actionGet();
-      if (bulkResponse.hasFailures()) {
-        for (BulkItemResponse item : bulkResponse)
-        {
-          if (item.isFailed())
+      if (bulkResponse.hasFailures() ) { 
+    	  if ( bulkResponse.buildFailureMessage().contains("[MapperParsingException") ) {
+    	  
+          for (BulkItemResponse item : bulkResponse)
           {
+            if (item.isFailed())
+           {
             logger.error(item.getFailureMessage());
+           }
           }
-        }
-      }
-    } finally {
+          }
+          else { throw new EventDeliveryException(bulkResponse.buildFailureMessage()); }
+    }
+    }
+
+    finally {
       bulkRequestBuilder = client.prepareBulk();
     }
   }
